@@ -27,6 +27,24 @@ typedef void (^FTNotificationCompletion)(void);
  */
 +(void)setNotificationIndicatorStyle:(UIBlurEffectStyle)style;
 /**
+ *  setNotificationIndicatorDismissDelay
+ *
+ *  @param delay interval to automatic dismissal
+ */
++(void)setNotificationIndicatorDismissDelay:(NSTimeInterval)delay;
+/**
+ *  setNotificationIndicatorUsesSpringAnimation
+ *
+ *  @param usesSpring true to use default animation spring parameters, false to disable
+ */
++(void)setNotificationIndicatorUsesSpringAnimation:(BOOL)usesSpring;
+/**
+ *  setNotificationIndicatorMaxMessageHeight
+ *
+ *  @param maxHeight custom maximum view height, <= 0 means default
+ */
++(void)setNotificationIndicatorMaxHeight:(CGFloat)maxHeight;
+/**
  *  showNotificationWithTitle message
  *
  *  @param title   title
@@ -95,17 +113,19 @@ typedef void (^FTNotificationCompletion)(void);
  *  @param image   image
  *  @param title   title
  *  @param message message
+ *  @param maxHeight custom maximum view height
  *  @param style   style
  */
--(void)showWithImage:(UIImage *)image title:(NSString *)title message:(NSString *)message style:(UIBlurEffectStyle)style;
+-(void)showWithImage:(UIImage *)image title:(NSString *)title message:(NSString *)message maxHeight:(CGFloat)maxHeight style:(UIBlurEffectStyle)style;
 /**
  *  getFrameForNotificationViewWithImage
  *
  *  @param image               image
  *  @param notificationMessage message
+ *  @param maxHeight           custom maximum view height
  *
  *  @return CGSize
  */
--(CGSize )getFrameForNotificationViewWithImage:(UIImage *)image message:(NSString *)notificationMessage;
+-(CGSize )getFrameForNotificationViewWithImage:(UIImage *)image message:(NSString *)notificationMessage maxHeight:(CGFloat)maxHeight;
 
 @end

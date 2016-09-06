@@ -31,6 +31,9 @@
 
 @property (nonatomic, strong)FTNotificationIndicatorView *notificationView;
 @property (nonatomic, assign)UIBlurEffectStyle indicatorStyle;
+@property (nonatomic, assign)NSTimeInterval customDelay;
+@property (nonatomic, assign)CGFloat maxHeight;
+@property (nonatomic, assign)BOOL disableSpring;
 @property (nonatomic, strong)UIImage *notificationImage;
 @property (nonatomic, strong)NSString *notificationTitle;
 @property (nonatomic, strong)NSString *notificationMessage;
@@ -64,6 +67,21 @@
 +(void)setNotificationIndicatorStyle:(UIBlurEffectStyle)style
 {
     [self sharedInstance].indicatorStyle = style;
+}
+
++(void)setNotificationIndicatorDismissDelay:(NSTimeInterval)delay
+{
+    [self sharedInstance].customDelay = delay;
+}
+
++(void)setNotificationIndicatorUsesSpringAnimation:(BOOL)usesSpring
+{
+    [self sharedInstance].disableSpring = !usesSpring;
+}
+
++(void)setNotificationIndicatorMaxHeight:(CGFloat)maxHeight
+{
+    [self sharedInstance].maxHeight = maxHeight;
 }
 
 +(void)showNotificationWithTitle:(NSString *)title message:(NSString *)message
@@ -186,11 +204,11 @@
 
 -(void)adjustIndicatorFrame
 {
-    CGSize notificationSize = [self.notificationView getFrameForNotificationViewWithImage:self.notificationImage message:self.notificationMessage];
+    CGSize notificationSize = [self.notificationView getFrameForNotificationViewWithImage:self.notificationImage message:self.notificationMessage maxHeight:self.maxHeight];
     
     [self.notificationView setFrame:CGRectMake(0,-(notificationSize.height),kFTScreenWidth,notificationSize.height)];
     
-    [self.notificationView showWithImage:self.notificationImage title:self.notificationTitle message:self.notificationMessage style:self.indicatorStyle];
+    [self.notificationView showWithImage:self.notificationImage title:self.notificationTitle message:self.notificationMessage maxHeight:self.maxHeight style:self.indicatorStyle];
     
     [[[UIApplication sharedApplication] keyWindow] addSubview:self.notificationView];
     
@@ -209,7 +227,7 @@
 -(void)startDismissTimer
 {
     [self stopDismissTimer];
-    CGFloat timeInterval = MAX(self.notificationMessage.length * 0.04 + 0.5, 2.0);
+    CGFloat timeInterval = self.customDelay > 0 ? self.customDelay : MAX(self.notificationMessage.length * 0.04 + 0.5, 2.0);
     
     _dismissTimer = [NSTimer scheduledTimerWithTimeInterval:timeInterval
                                                      target:self
@@ -230,8 +248,8 @@
 {
     [UIView animateWithDuration:kFTNotificationDefaultAnimationDuration
                           delay:0
-         usingSpringWithDamping:0.6
-          initialSpringVelocity:0.8
+         usingSpringWithDamping:self.disableSpring ? 1.0 : 0.6
+          initialSpringVelocity:self.disableSpring ? 1.0 : 0.8
                         options:UIViewAnimationOptionCurveEaseIn
                      animations:^{
                          
@@ -346,7 +364,7 @@
 
 #pragma mark - main methods
 
--(void)showWithImage:(UIImage *)image title:(NSString *)title message:(NSString *)message style:(UIBlurEffectStyle)style
+-(void)showWithImage:(UIImage *)image title:(NSString *)title message:(NSString *)message maxHeight:(CGFloat)maxHeight style:(UIBlurEffectStyle)style
 {
     self.effect = [UIBlurEffect effectWithStyle:style];
 
@@ -358,9 +376,8 @@
     self.messageLabel.text = message;
     self.titleLabel.textColor = [self getTextColorWithStyle:style];
     self.messageLabel.textColor = [self getTextColorWithStyle:style];
-
     
-    CGSize messageSize = [self getFrameForNotificationMessageLabelWithImage:self.iconImageView.image message:message];
+    CGSize messageSize = [self getFrameForNotificationMessageLabelWithImage:self.iconImageView.image message:message maxHeight:maxHeight];
     
     CGFloat text_X = image ? kFTNotificationMargin_X*2 + kFTNotificationImageSize : kFTNotificationMargin_X;
     
@@ -372,23 +389,29 @@
 
 #pragma mark - getFrameForNotificationMessageLabelWithImage
 
--(CGSize )getFrameForNotificationMessageLabelWithImage:(UIImage *)image message:(NSString *)notificationMessage
+-(CGSize )getFrameForNotificationMessageLabelWithImage:(UIImage *)image message:(NSString *)notificationMessage maxHeight:(CGFloat)maxHeight
 {
     CGFloat textWidth = image ? (kFTScreenWidth - kFTNotificationMargin_X*3 - kFTNotificationImageSize) : (kFTScreenWidth - kFTNotificationMargin_X*2);
     CGRect textSize = [notificationMessage boundingRectWithSize:CGSizeMake(textWidth, MAXFLOAT)
                                                         options:(NSStringDrawingUsesFontLeading | NSStringDrawingTruncatesLastVisibleLine | NSStringDrawingUsesLineFragmentOrigin)
                                                      attributes:@{NSFontAttributeName : kFTNotificationDefaultMessageFont}
                                                         context:nil];
-    CGSize size = CGSizeMake(textSize.size.width, MIN(textSize.size.height ,kFTNotificationMaxHeight - kFTNotificationTitleHeight - kFTNotificationStatusBarHeight - kFTNotificationMargin_Y));
+    if (maxHeight <= 0) {
+        maxHeight = kFTNotificationMaxHeight;
+    }
+    CGSize size = CGSizeMake(textSize.size.width, MIN(textSize.size.height ,maxHeight - kFTNotificationTitleHeight - kFTNotificationStatusBarHeight - kFTNotificationMargin_Y));
     return size;
 }
 
 #pragma mark - getFrameForNotificationViewWithImage
 
--(CGSize )getFrameForNotificationViewWithImage:(UIImage *)image message:(NSString *)notificationMessage
+-(CGSize )getFrameForNotificationViewWithImage:(UIImage *)image message:(NSString *)notificationMessage maxHeight:(CGFloat)maxHeight
 {
-    CGSize textSize = [self getFrameForNotificationMessageLabelWithImage:image message:notificationMessage];
-    CGSize size = CGSizeMake(kFTScreenWidth, MAX(MIN(textSize.height + kFTNotificationMargin_Y + kFTNotificationTitleHeight + kFTNotificationStatusBarHeight,kFTNotificationMaxHeight), kFTNotificationStatusBarHeight + kFTNotificationMargin_Y*2 + kFTNotificationImageSize));
+    CGSize textSize = [self getFrameForNotificationMessageLabelWithImage:image message:notificationMessage maxHeight:maxHeight];
+    if (maxHeight <= 0) {
+        maxHeight = kFTNotificationMaxHeight;
+    }
+    CGSize size = CGSizeMake(kFTScreenWidth, MAX(MIN(textSize.height + kFTNotificationMargin_Y + kFTNotificationTitleHeight + kFTNotificationStatusBarHeight, maxHeight), kFTNotificationStatusBarHeight + kFTNotificationMargin_Y*2 + kFTNotificationImageSize));
     return size;
 }
 
